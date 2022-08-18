@@ -112,9 +112,6 @@ class Entity:
         self.position.y += y
     
     def draw(self, delta):
-        self.rect.x = self.position.x
-        self.rect.y = self.position.y
-        
         if self.sprite is not None:
             _screen.blit(self.sprite, (self.position.x, self.position.y))
             
@@ -122,6 +119,9 @@ class Entity:
             pygame.draw.rect(_screen, (255, 0, 0), self.rect, 1)
 
     def update(self, delta):
+        self.rect.x = self.position.x
+        self.rect.y = self.position.y
+        
         if self.lifetime > 0:
             self.lifetime -= delta
             
@@ -163,34 +163,22 @@ class Bird(Entity):
         
         if self.position.y <= 0:
             _game_over = True
-        
+
 
 class Pipe(Entity):
     def __init__(self, **kwargs):
         kwargs["lifetime"] = 5.0
         super().__init__(**kwargs)
-        self.set_position(x=WINDOW_SIZE[0], y=random.randint(30, WINDOW_SIZE[1] - 40))
-        self.top_pipe = Entity(sprite="pipe_top")
-        self.bottom_pipe = Entity(sprite="pipe_bottom")
-        
-    def draw(self, delta):
-        super().draw(delta)
-        global _game_over
-        self.top_pipe.draw(delta)
-        self.bottom_pipe.draw(delta)
-        
-        if _player is not None and not _game_over:
-            if self.top_pipe.rect.colliderect(_player.rect) or self.bottom_pipe.rect.colliderect(_player.rect):
-                _game_over = True
-        
+    
     def update(self, delta):
         super().update(delta)
-        self.top_pipe.update(delta)
-        self.bottom_pipe.update(delta)
+        global _game_over
         self.position.x -= delta * PIPE_SPEED
-        self.top_pipe.set_position(self.position.x, self.position.y - self.top_pipe.rect.h - PIPE_GAP)
-        self.bottom_pipe.set_position(self.position.x, self.position.y + PIPE_GAP)
         
+        if _player is not None and not _game_over:
+            if self.rect.colliderect(_player.rect):
+                _game_over = True
+
 
 class Ground(Entity):
     def __init__(self, **kwargs):
@@ -234,7 +222,11 @@ def handle_environment(delta):
         
         if _pipe_timer <= 0:
             _pipe_timer = PIPE_SPAWN_TIME
-            add_entity(Pipe())
+            y_pos = random.randint(30, WINDOW_SIZE[1] - 40)
+            top_pipe = add_entity(Pipe(sprite="pipe_top"))
+            top_pipe.set_position(WINDOW_SIZE[0], y_pos - top_pipe.sprite.get_height() - PIPE_GAP)
+            bottom_pipe = add_entity(Pipe(sprite="pipe_bottom"))
+            bottom_pipe.set_position(WINDOW_SIZE[0], y_pos + PIPE_GAP)
 
 def handle_game(delta):
     global _score, _score_font, _game_over_font, _game_over_cooldown
