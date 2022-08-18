@@ -7,15 +7,14 @@ import random
 from enum import Enum
 
 WINDOW_POSITION = (30, 30)
-WINDOW_SIZE = (100, 150)
+WINDOW_SIZE = (100, 140)
 FPS = 60
 PIPE_SPAWN_TIME = 2.0
-PIPE_GAP = 20
+PIPE_GAP = 18
 PIPE_SPEED = 50
 GRAVITY = 300
 GAME_OVER_COOLDOWN = 1.0
 
-os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % WINDOW_POSITION
 pygame.init()
 pygame.font.init()
 pygame.display.set_caption("Flappy")
