@@ -10,19 +10,22 @@ WINDOW_POSITION = (200, 100)
 WINDOW_SIZE = (200, 200)
 FPS = 60
 PIPE_SPAWN_TIME = 2.0
-PIPE_GAP = 30
+PIPE_GAP = 20
 PIPE_SPEED = 50
+GRAVITY = 300
 
 os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % WINDOW_POSITION
 pygame.init()
 pygame.font.init()
 pygame.display.set_caption("Flappy")
-clock = pygame.time.Clock()
-screen = pygame.display.set_mode(WINDOW_SIZE, pygame.SCALED | pygame.RESIZABLE)
-running = True
-paused = False
-last_delta = 0.0
-pipe_timer = PIPE_SPAWN_TIME
+
+_clock = pygame.time.Clock()
+_screen = pygame.display.set_mode(WINDOW_SIZE, pygame.SCALED | pygame.RESIZABLE)
+_running = True
+_paused = False
+_last_delta = time.perf_counter()
+_pipe_timer = PIPE_SPAWN_TIME
+_clicked = False
 
 class LAYER(Enum):
     BACKGROUND = 0
@@ -70,9 +73,9 @@ class Vector2:
 class Entity:
     def __init__(self, **kwargs) -> None:
         self.position = Vector2(kwargs["x"] if "x" in kwargs else 0, kwargs["y"] if "y" in kwargs else 0)
-        self.rect: pygame.Rect = pygame.Rect(self.position.x, self.position.y, 0, 0)
-        self.sprite: pygame.Surface | None = self.set_sprite(kwargs["sprite"] if "sprite" in kwargs else None)
-        self.layer: LAYER = kwargs["layer"] if "layer" in kwargs else LAYER.FOREGROUND
+        self.rect = pygame.Rect(self.position.x, self.position.y, 0, 0)
+        self.sprite = self.set_sprite(kwargs["sprite"] if "sprite" in kwargs else None)
+        self.layer = kwargs["layer"] if "layer" in kwargs else LAYER.FOREGROUND
 
     def set_sprite(self, sprite: str | None) -> pygame.Surface | None:
         if sprite is None or sprite not in SPRITES:
@@ -87,12 +90,18 @@ class Entity:
         self.position.x = x
         self.position.y = y
     
+    def translate(self, x, y) -> None:
+        self.position.x += x
+        self.position.y += y
+    
     def draw(self) -> None:
         self.rect.x = self.position.x
         self.rect.y = self.position.y
         
         if self.sprite is not None:
-            screen.blit(self.sprite, (math.floor(self.position.x), math.floor(self.position.y)))
+            _screen.blit(self.sprite, (math.floor(self.position.x), math.floor(self.position.y)))
+            
+        # Debug draw bounds
 
     def update(self, delta) -> None:
         ...
@@ -102,14 +111,40 @@ class Bird(Entity):
         kwargs["sprite"] = "bird"
         kwargs["layer"] = LAYER.SPECIAL
         super().__init__(**kwargs)
+        self.angle = 0
+        self.velocity = Vector2(0, 0)
+    
+    def draw(self, delta) -> None:
+        # super().draw()
+        self.rect.x = self.position.x
+        self.rect.y = self.position.y
+        
+        if self.sprite is not None:
+            angle = math.atan2(self.velocity.y, self.velocity.x) * 180 / math.pi * -1
+            self.angle = lerp(self.angle, angle, delta * 2)
+            rotated_sprite = pygame.transform.rotate(self.sprite, self.angle)
+            new_rect = rotated_sprite.get_rect(center = self.sprite.get_rect(center = (self.position.x + self.sprite.get_width() / 2, self.position.y + self.sprite.get_height() / 2)).center)
+            _screen.blit(rotated_sprite, new_rect)
+            
+        pygame.draw.rect(_screen, (255, 0, 0), self.rect, 1)
+        
+    def update(self, delta) -> None:
+        super().update(delta)
+        
+        if _clicked:
+            self.velocity.y = -100
+        
+        self.velocity.y += GRAVITY * delta
+        self.translate(self.velocity.x * delta, self.velocity.y * delta)
+        
 
 class Pipe(Entity):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.top_pipe = Entity(sprite="pipe_top")
-        self.bottom_pipe = Entity(sprite="pipe_bottom")
+        self.top_pipe: Entity = Entity(sprite="pipe_top")
+        self.bottom_pipe: Entity = Entity(sprite="pipe_bottom")
         
-    def draw(self) -> None:
+    def draw(self, delta) -> None:
         super().draw()
         self.top_pipe.draw()
         self.bottom_pipe.draw()
@@ -120,6 +155,9 @@ class Pipe(Entity):
         self.top_pipe.set_position(self.position.x, self.position.y - self.top_pipe.rect.h - PIPE_GAP)
         self.bottom_pipe.set_position(self.position.x, self.position.y + PIPE_GAP)
 
+def lerp(a, b, t):
+    return a + (b - a) * t
+
 def add_entity(entity) -> None:
     entities[entity.layer].append(entity)
 
@@ -127,36 +165,41 @@ def process_entities(delta) -> None:
     for layer in entities.values():
         for entity in layer:
             entity.update(delta)
-            entity.draw()
+            entity.draw(delta)
 
 # Create game world
 add_entity(Bird(x=20, y=WINDOW_SIZE[1] / 2))
 
 def game_loop(delta) -> None:
-    if paused:
+    if _paused:
         return
     
-    global pipe_timer
-    pipe_timer -= delta
+    global _pipe_timer
+    _pipe_timer -= delta
     
-    if pipe_timer <= 0:
-        pipe_timer = PIPE_SPAWN_TIME
+    if _pipe_timer <= 0:
+        _pipe_timer = PIPE_SPAWN_TIME
         add_entity(Pipe(x=WINDOW_SIZE[0], y=random.randint(30, WINDOW_SIZE[1] - 30)))
 
-while running:
-    clock.tick(FPS)
-    now = time.perf_counter()
-    delta = now - last_delta
-    last_delta = now
-    screen.fill((10, 10, 30))
-    process_entities(delta)
-    game_loop(delta)
-    pygame.display.flip()
+while _running:
+    _clock.tick(FPS)
+    _clicked = False
     events = pygame.event.get()
 
     for event in events:
         if event.type == pygame.QUIT:
-            running = False
+            _running = False
+        
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            _clicked = True
+            
+    now = time.perf_counter()
+    delta = now - _last_delta
+    _last_delta = now
+    _screen.fill((10, 10, 30))
+    process_entities(delta)
+    game_loop(delta)
+    pygame.display.flip()
 
 pygame.quit()
 sys.exit()
