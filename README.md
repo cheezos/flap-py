@@ -4,7 +4,7 @@ Created with Python 3.10 and Pygame 2.1.2
 
 ## How To Play
 
-[Download](https://github.com/cheezos/flap-py/releases) from releases.
+[Download](https://github.com/cheezos/flap-py/releases/latest) from releases.
 
 ### Or run from source!
 
