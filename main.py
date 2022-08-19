@@ -17,7 +17,7 @@ GAME_OVER_COOLDOWN = 1.0
 
 pygame.init()
 pygame.font.init()
-pygame.display.set_caption("Flappy")
+pygame.display.set_caption("FlapPy Bird")
 
 _debug = False
 _running = True
