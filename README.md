@@ -1,3 +1,7 @@
+## Notice
+
+This is for educational purposes only and will no longer be updated or maintained.
+
 ## FlapPy Bird
 
 Created with Python 3.10 and Pygame 2.1.2
