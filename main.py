@@ -1,8 +1,8 @@
 import math
 import sys
 import os
-import pygame
 import time
+import pygame
 import random
 from enum import Enum
 
@@ -19,27 +19,20 @@ pygame.init()
 pygame.font.init()
 pygame.display.set_caption("FlapPy Bird")
 
+_clock = pygame.time.Clock()
+_screen = pygame.display.set_mode(WINDOW_SIZE, pygame.SCALED | pygame.RESIZABLE)
+_font = pygame.font.Font(f"{os.path.dirname(os.path.abspath(__file__))}/resources/fonts/ThaleahFat.ttf", 15)
 _debug = False
 _running = True
 _game_over = True
 _clicked = False
-_game_over_cooldown = 0.0
 _pipe_timer = PIPE_SPAWN_TIME
 _last_delta = time.perf_counter()
-_score = 0
-_clock = pygame.time.Clock()
-_screen = pygame.display.set_mode(WINDOW_SIZE, pygame.SCALED | pygame.RESIZABLE)
-_game_over_font = pygame.font.Font(f"{os.path.dirname(os.path.abspath(__file__))}/resources/fonts/ThaleahFat.ttf", 20)
-_score_font = pygame.font.Font(f"{os.path.dirname(os.path.abspath(__file__))}/resources/fonts/ThaleahFat.ttf", 16)
+_game_over_cooldown = 0.0
+_score = 0.0
 _player = None
 _ground_1 = None
 _ground_2 = None
-
-class LAYER(Enum):
-    BACKGROUND = 0
-    FOREGROUND = 1
-    UI = 2
-    SPECIAL = 3
 
 SPRITES = {
     "bird": {
@@ -68,13 +61,17 @@ for sprite in SPRITES:
         img.set_colorkey((0, 0, 0))
         SPRITES[sprite]["surface"] = img
         print(f"Loaded sprite from '{path}'")
+        
+class LAYER(Enum):
+    BACKGROUND = 0
+    FOREGROUND = 1
+    PLAYER = 2
 
 # Entities sorted by layer
 entities = {
     LAYER.BACKGROUND: [],
     LAYER.FOREGROUND: [],
-    LAYER.UI: [],
-    LAYER.SPECIAL: []
+    LAYER.PLAYER: []
 }
 
 class Vector2:
@@ -131,7 +128,7 @@ class Entity:
 class Bird(Entity):
     def __init__(self, **kwargs):
         kwargs["sprite"] = "bird"
-        kwargs["layer"] = LAYER.SPECIAL
+        kwargs["layer"] = LAYER.PLAYER
         super().__init__(**kwargs)
         self.angle = 0
         self.velocity = Vector2(0, 0)
@@ -193,7 +190,6 @@ class Ground(Entity):
             if self.rect.colliderect(_player.rect):
                 _game_over = True
 
-
 def lerp(a, b, t):
     return a + (b - a) * t
 
@@ -210,11 +206,11 @@ def process_entities(delta):
 def handle_environment(delta):
     global _ground_1, _ground_2, _pipe_timer
     
-    if _ground_1.position.x <= -_ground_1.sprite.get_width():
-        _ground_1.position.x = _ground_2.position.x + _ground_2.sprite.get_width()
+    if _ground_1.position.x <= -_ground_1.sprite.get_width():  # type: ignore
+        _ground_1.position.x = _ground_2.position.x + _ground_2.sprite.get_width()  # type: ignore
     
-    if _ground_2.position.x <= -_ground_2.sprite.get_width():
-        _ground_2.position.x = _ground_1.position.x + _ground_1.sprite.get_width()
+    if _ground_2.position.x <= -_ground_2.sprite.get_width():  # type: ignore
+        _ground_2.position.x = _ground_1.position.x + _ground_1.sprite.get_width()  # type: ignore
     
     if not _game_over:
         _pipe_timer -= delta
@@ -228,12 +224,12 @@ def handle_environment(delta):
             bottom_pipe.set_position(WINDOW_SIZE[0], y_pos + PIPE_GAP)
 
 def handle_game(delta):
-    global _score, _score_font, _game_over_font, _game_over_cooldown
+    global _score, _font, _game_over_font, _game_over_cooldown
     
     if not _game_over:
         _score += delta
     else:
-        surface = _score_font.render("Click To Start", False, (255, 255, 255))
+        surface = _font.render("Click To Start", False, (255, 255, 255))
         _screen.blit(surface, (WINDOW_SIZE[0] / 2 - surface.get_width() / 2, WINDOW_SIZE[1] / 2 - surface.get_height() / 2))
         _game_over_cooldown -= delta
         
@@ -242,7 +238,7 @@ def handle_game(delta):
             reset()
             start()
     
-    surface = _score_font.render(str(math.floor(_score)), False, (255, 255, 255))
+    surface = _font.render(str(math.floor(_score)), False, (255, 255, 255))
     _screen.blit(surface, (WINDOW_SIZE[0] / 2 - surface.get_width() / 2, 2))
 
 def create_world():
